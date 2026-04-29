@@ -47,7 +47,21 @@ def read_input_file(file_path: str) -> pd.DataFrame:
 
 def normalize_column_names(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df.columns = [str(col).strip() for col in df.columns]
+
+    column_map = {
+        "rep": "Rep",
+        "carrier": "Carrier Name",
+        "carrier name": "Carrier Name",
+        "dot": "DOT",
+        "load": "Load ID",
+        "load id": "Load ID",
+    }
+
+    df.columns = [
+        column_map.get(str(col).strip().lower(), str(col).strip())
+        for col in df.columns
+    ]
+
     return df
 
 
@@ -265,11 +279,15 @@ def export_report(rep_scorecard: pd.DataFrame, carrier_detail: pd.DataFrame, out
 
 
 def main():
+    from datetime import datetime
+
     current_folder = Path.cwd()
 
     assignments_file = current_folder / "Assignments.csv"
     loads_file = current_folder / "loads.csv"
-    output_file = current_folder / "Weekly_Carrier_Conversion_Report.xlsx"
+
+    today_str = datetime.today().strftime("%Y-%m-%d")
+    output_file = current_folder / f"Weekly_Carrier_Conversion_Report_{today_str}.xlsx"
 
     if not assignments_file.exists():
         print("Missing Assignments.csv in this folder")
@@ -289,9 +307,6 @@ def main():
     export_report(rep_scorecard, carrier_detail, output_file)
 
     print(f"Report created: {output_file}")
-    print()
-    print("Rep Scorecard Preview:")
-    print(rep_scorecard.to_string(index=False))
     input("Press Enter to exit...")
 
 
