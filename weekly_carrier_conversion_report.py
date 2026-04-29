@@ -265,29 +265,34 @@ def export_report(rep_scorecard: pd.DataFrame, carrier_detail: pd.DataFrame, out
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create a weekly carrier conversion report.")
-    parser.add_argument("assignments_file", help="Weekly assignment file, CSV or Excel")
-    parser.add_argument("loads_file", help="Weekly booked loads file, CSV or Excel")
-    parser.add_argument(
-        "-o",
-        "--output",
-        default="Weekly_Carrier_Conversion_Report.xlsx",
-        help="Output Excel file name"
-    )
+    current_folder = Path.cwd()
 
-    args = parser.parse_args()
+    assignments_file = current_folder / "Assignments.csv"
+    loads_file = current_folder / "loads.csv"
+    output_file = current_folder / "Weekly_Carrier_Conversion_Report.xlsx"
 
-    assignments = read_input_file(args.assignments_file)
-    loads = read_input_file(args.loads_file)
+    if not assignments_file.exists():
+        print("Missing Assignments.csv in this folder")
+        input("Press Enter to exit...")
+        return
+
+    if not loads_file.exists():
+        print("Missing loads.csv in this folder")
+        input("Press Enter to exit...")
+        return
+
+    assignments = read_input_file(assignments_file)
+    loads = read_input_file(loads_file)
 
     rep_scorecard, carrier_detail = build_report(assignments, loads)
 
-    export_report(rep_scorecard, carrier_detail, args.output)
+    export_report(rep_scorecard, carrier_detail, output_file)
 
-    print(f"Report created: {args.output}")
+    print(f"Report created: {output_file}")
     print()
     print("Rep Scorecard Preview:")
     print(rep_scorecard.to_string(index=False))
+    input("Press Enter to exit...")
 
 
 if __name__ == "__main__":
