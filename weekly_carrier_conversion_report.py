@@ -8,13 +8,13 @@ Usage:
 
 Required assignment columns:
     Rep
-    Carrier Name
+    Carrier
     DOT
 
 Required booked load columns:
-    Carrier Name
+    Carrier
     DOT
-    Load ID
+    Load
 
 Output:
     Weekly_Carrier_Conversion_Report.xlsx
@@ -26,7 +26,7 @@ import pandas as pd
 
 
 ASSIGNMENT_REQUIRED_COLUMNS = ["Rep", "Carrier Name", "DOT"]
-LOAD_REQUIRED_COLUMNS = ["Carrier Name", "DOT", "Load ID"]
+LOAD_REQUIRED_COLUMNS = ["Carrier Name", "Load ID"]
 
 
 def read_input_file(file_path: str) -> pd.DataFrame:
@@ -46,8 +46,16 @@ def read_input_file(file_path: str) -> pd.DataFrame:
 
 
 def normalize_column_names(df: pd.DataFrame) -> pd.DataFrame:
+    def apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df.columns = [str(col).strip() for col in df.columns]
+
+    aliases = {
+        "Carrier": "Carrier Name",
+        "Load": "Load ID",
+    }
+
+    df = df.rename(columns={col: aliases[col] for col in df.columns if col in aliases})
+
     return df
 
 
@@ -109,9 +117,18 @@ def prepare_assignments(assignments: pd.DataFrame) -> pd.DataFrame:
 
 def prepare_loads(loads: pd.DataFrame) -> pd.DataFrame:
     loads = normalize_column_names(loads)
+    loads = apply_column_aliases(loads)
     validate_columns(loads, LOAD_REQUIRED_COLUMNS, "Load file")
 
-    output = loads[LOAD_REQUIRED_COLUMNS].copy()
+    output_columns = ["Carrier Name", "Load ID"]
+
+    if "DOT" in loads.columns:
+        output_columns.append("DOT")
+
+    output = loads[output_columns].copy()
+
+    if "DOT" not in output.columns:
+        output["DOT"] = ""
 
     output["Carrier Name"] = output["Carrier Name"].apply(lambda x: "" if pd.isna(x) else str(x).strip())
     output["DOT"] = output["DOT"].apply(clean_dot)
@@ -128,21 +145,37 @@ def build_report(assignments: pd.DataFrame, loads: pd.DataFrame) -> tuple[pd.Dat
     assignments_clean = prepare_assignments(assignments)
     loads_clean = prepare_loads(loads)
 
-    # Primary logic: DOT-only matching
-    loads_by_dot = (
-        loads_clean[loads_clean["DOT"] != ""]
-        .groupby("DOT", as_index=False)
-        .agg(
-            Loads_Booked=("Load ID", "nunique"),
-            Load_IDs=("Load ID", lambda x: ", ".join(sorted(set(x))))
+        # Prefer DOT matching when available, otherwise match by cleaned carrier name
+    if loads_clean["DOT"].str.strip().ne("").any():
+        loads_grouped = (
+            loads_clean[loads_clean["DOT"] != ""]
+            .groupby("DOT", as_index=False)
+            .agg(
+                Loads_Booked=("Load ID", "nunique"),
+                Load_IDs=("Load ID", lambda x: ", ".join(sorted(set(x))))
+            )
         )
-    )
 
-    carrier_detail = assignments_clean.merge(
-        loads_by_dot,
-        on="DOT",
-        how="left"
-    )
+        carrier_detail = assignments_clean.merge(
+            loads_grouped,
+            on="DOT",
+            how="left"
+        )
+    else:
+        loads_grouped = (
+            loads_clean
+            .groupby("Carrier Name Clean", as_index=False)
+            .agg(
+                Loads_Booked=("Load ID", "nunique"),
+                Load_IDs=("Load ID", lambda x: ", ".join(sorted(set(x))))
+            )
+        )
+
+        carrier_detail = assignments_clean.merge(
+            loads_grouped,
+            on="Carrier Name Clean",
+            how="left"
+        )
 
     carrier_detail["Loads_Booked"] = carrier_detail["Loads_Booked"].fillna(0).astype(int)
     carrier_detail["Load_IDs"] = carrier_detail["Load_IDs"].fillna("")
