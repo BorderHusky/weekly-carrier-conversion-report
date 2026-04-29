@@ -47,16 +47,16 @@ def read_input_file(file_path: str) -> pd.DataFrame:
 
 def normalize_column_names(df: pd.DataFrame) -> pd.DataFrame:
     def apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-
-    aliases = {
-        "Carrier": "Carrier Name",
-        "Load": "Load ID",
-    }
-
-    df = df.rename(columns={col: aliases[col] for col in df.columns if col in aliases})
-
-    return df
+        df = df.copy()
+    
+        aliases = {
+            "Carrier": "Carrier Name",
+            "Load": "Load ID",
+        }
+    
+        df = df.rename(columns={col: aliases[col] for col in df.columns if col in aliases})
+    
+        return df
 
 
 def validate_columns(df: pd.DataFrame, required_columns: list[str], file_label: str) -> None:
