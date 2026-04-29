@@ -1,0 +1,31 @@
+name: Build Mac App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install pandas openpyxl pyinstaller
+
+      - name: Build Mac executable
+        run: |
+          python -m PyInstaller --onefile --name CarrierConversionReport weekly_carrier_conversion_report.py
+
+      - name: Upload Mac executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarrierConversionReport_Mac
+          path: dist/CarrierConversionReport
